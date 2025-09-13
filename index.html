@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Café Finder</title>
+    <meta name="description" content="Find nearby cafes with filters, photos, and directions." />
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                50: '#eef2ff',
+                100: '#e0e7ff',
+                200: '#c7d2fe',
+                300: '#a5b4fc',
+                400: '#818cf8',
+                500: '#6366f1',
+                600: '#4f46e5',
+                700: '#4338ca',
+                800: '#3730a3',
+                900: '#312e81'
+              }
+            }
+          }
+        }
+      }
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="./src/styles.css">
+    <style>
+      html, body, #app {
+        height: 100%;
+      }
+      body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+      #map { width: 500px; height: 500px; border-radius: 12px; }
+      .scrollbar-thin::-webkit-scrollbar { height: 8px; width: 8px; }
+      .scrollbar-thin::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+      .scrollbar-thin::-webkit-scrollbar-track { background: #f1f5f9; }
+    </style>
+  </head>
+  <body class="min-h-screen bg-slate-50">
+    <div id="app" class="min-h-screen flex flex-col">
+      <!-- Header -->
+      <header id="mainHeader" class="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-slate-200">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="h-10 w-10 rounded-xl bg-brand-600 text-white grid place-content-center shadow-md shadow-brand-600/30">☕</div>
+            <h1 class="text-xl sm:text-2xl font-semibold text-slate-800">Café Finder</h1>
+          </div>
+          <div id="statusBadge" class="text-sm px-3 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">Online</div>
+        </div>
+      </header>
+
+      <!-- Hero Section -->
+      <section id="heroSection" class="hero-bg min-h-screen flex items-center justify-center text-white">
+        <div class="max-w-4xl mx-auto text-center px-4">
+          <div class="mb-8">
+            <div class="coffee-bean text-6xl mb-4">☕</div>
+            <div class="coffee-bean text-4xl mb-2">☕</div>
+            <div class="coffee-bean text-5xl">☕</div>
+          </div>
+          <h1 class="text-4xl md:text-6xl font-bold mb-6">Find the best cafés near you</h1>
+          <p class="text-xl md:text-2xl mb-8 opacity-90">Discover amazing coffee shops, restaurants, and bakeries in your area</p>
+          <button id="startSearchBtn" class="bg-white text-brand-600 px-8 py-4 rounded-xl font-semibold text-lg hover:bg-gray-50 transition-all duration-300 transform hover:scale-105 shadow-lg">
+            Start Searching
+          </button>
+        </div>
+      </section>
+
+      <!-- Search and Filters -->
+      <section id="searchSection" class="hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-slate-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 sm:py-4">
+          <div class="flex flex-col gap-3 sm:gap-4">
+            <div class="flex flex-col md:flex-row gap-3 md:items-center">
+              <div class="flex-1 flex items-center gap-2">
+                <input id="queryInput" type="text" placeholder="Search cafés by name or keyword…" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-brand-500" />
+                <button id="searchBtn" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-brand-600 hover:bg-brand-700 text-white transition active:scale-95">
+                  <span class="hidden sm:inline">Search</span>
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-5 h-5"><path fill-rule="evenodd" d="M10.5 3.75a6.75 6.75 0 1 0 4.28 12.053l4.708 4.709a.75.75 0 1 0 1.06-1.061l-4.708-4.709A6.75 6.75 0 0 0 10.5 3.75Zm-5.25 6.75a5.25 5.25 0 1 1 10.5 0 5.25 5.25 0 0 1-10.5 0Z" clip-rule="evenodd"/></svg>
+                </button>
+              </div>
+              <div class="flex items-center gap-2">
+                <button id="locateBtn" class="px-3 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 transition">Use my location</button>
+                <button id="nearbyBtn" class="px-3 py-2 rounded-lg border border-slate-300 hover:bg-slate-50 transition">Find nearby</button>
+              </div>
+            </div>
+
+            <!-- Category chips -->
+            <div class="flex flex-wrap gap-2">
+              <button class="cat-chip px-3 py-1.5 rounded-full border text-sm hover:bg-slate-50" data-type="cafe" data-query="cafe">Cafe</button>
+              <button class="cat-chip px-3 py-1.5 rounded-full border text-sm hover:bg-slate-50" data-type="restaurant" data-query="restaurant">Restaurant</button>
+              <button class="cat-chip px-3 py-1.5 rounded-full border text-sm hover:bg-slate-50" data-type="bakery" data-query="bakery">Bakery</button>
+              <button class="cat-chip px-3 py-1.5 rounded-full border text-sm hover:bg-slate-50" data-type="meal_takeaway" data-query="takeaway">Takeaway</button>
+              <button class="cat-chip px-3 py-1.5 rounded-full border text-sm hover:bg-slate-50" data-type="tea" data-query="tea">Tea</button>
+            </div>
+
+            <!-- Filters -->
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div>
+                <label class="text-xs text-slate-600">Budget</label>
+                <select id="priceFilter" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none">
+                  <option value="">Any</option>
+                  <option value="1">₹</option>
+                  <option value="2">₹₹</option>
+                  <option value="3">₹₹₹</option>
+                  <option value="4">₹₹₹₹</option>
+                </select>
+              </div>
+              <div>
+                <label class="text-xs text-slate-600">Min rating</label>
+                <select id="ratingFilter" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none">
+                  <option value="">Any</option>
+                  <option value="4.5">4.5+</option>
+                  <option value="4.0">4.0+</option>
+                  <option value="3.5">3.5+</option>
+                  <option value="3.0">3.0+</option>
+                </select>
+              </div>
+              <div class="flex items-end gap-2">
+                <input id="wifiFilter" type="checkbox" class="w-4 h-4" />
+                <label class="text-sm">Prefer Wi-Fi</label>
+              </div>
+              <div class="flex items-end gap-2">
+                <input id="openNowFilter" type="checkbox" class="w-4 h-4" />
+                <label class="text-sm">Open now</label>
+              </div>
+              <div>
+                <label class="text-xs text-slate-600">Radius</label>
+                <select id="radiusFilter" class="w-full px-3 py-2 rounded-lg border border-slate-300 focus:outline-none">
+                  <option value="1000">1 km</option>
+                  <option value="2000" selected>2 km</option>
+                  <option value="5000">5 km</option>
+                  <option value="10000">10 km</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Controls + Content -->
+<main id="mainContent" 
+class="hidden flex-1 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-4" 
+style="margin-top: 120px;">
+
+<!-- Layout: Responsive -->
+<section class="flex flex-col lg:flex-row gap-4">
+  
+  <!-- Map -->
+  <div class="relative w-full lg:w-[500px] mt-4 lg:mt-16 lg:sticky lg:top-24 self-start">
+    <div id="map" 
+      class="w-full h-[300px] sm:h-[400px] lg:w-[500px] lg:h-[500px] rounded-xl overflow-hidden border border-slate-200">
+    </div>
+
+    <!-- Search this area button -->
+    <button id="searchAreaBtn"
+      class="hidden absolute top-4 left-1/2 -translate-x-1/2 px-4 py-2 bg-blue-600 text-white rounded-lg shadow-lg z-[999999]">
+      Search this area
+    </button>
+  </div>
+  
+  <!-- Results panel -->
+  <div class="flex-1 bg-white rounded-xl border border-slate-200 overflow-hidden flex flex-col relative z-0">        
+    <div class="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
+      <h2 class="font-semibold text-slate-800">Results</h2>
+      <span id="resultCount" class="text-sm text-slate-500">0</span>
+    </div>
+    
+    <div id="results" 
+      class="flex-1 overflow-auto p-3 space-y-3 scrollbar-thin" 
+      style="max-height: 500px;">
+    </div>
+    
+    <div id="resultsSkeleton" 
+      class="hidden flex-1 overflow-auto p-3 space-y-3" 
+      style="max-height: 500px;">
+      <!-- Skeleton loaders (same as before) -->
+      <div class="animate-pulse overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div class="flex gap-3 p-3">
+          <div class="w-24 h-24 bg-slate-200 rounded-lg"></div>
+          <div class="min-w-0 flex-1 space-y-2">
+            <div class="h-4 bg-slate-200 rounded w-2/3"></div>
+            <div class="h-3 bg-slate-200 rounded w-1/2"></div>
+            <div class="h-3 bg-slate-200 rounded w-1/3"></div>
+          </div>
+        </div>
+      </div>
+      <div class="animate-pulse overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div class="flex gap-3 p-3">
+          <div class="w-24 h-24 bg-slate-200 rounded-lg"></div>
+          <div class="min-w-0 flex-1 space-y-2">
+            <div class="h-4 bg-slate-200 rounded w-2/3"></div>
+            <div class="h-3 bg-slate-200 rounded w-1/2"></div>
+            <div class="h-3 bg-slate-200 rounded w-1/3"></div>
+          </div>
+        </div>
+      </div>
+      <div class="animate-pulse overflow-hidden rounded-xl border border-slate-200 bg-white">
+        <div class="flex gap-3 p-3">
+          <div class="w-24 h-24 bg-slate-200 rounded-lg"></div>
+          <div class="min-w-0 flex-1 space-y-2">
+            <div class="h-4 bg-slate-200 rounded w-2/3"></div>
+            <div class="h-3 bg-slate-200 rounded w-1/2"></div>
+            <div class="h-3 bg-slate-200 rounded w-1/3"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+</main>
+
+
+      <footer class="py-6 text-center text-slate-500 text-sm">
+        Built with Google Maps JavaScript API • Deploy on Vercel/Netlify
+      </footer>
+    </div>
+
+    <!-- Details Modal -->
+    <div id="detailsModal" class="fixed inset-0 hidden items-center justify-center z-50">
+      <div class="absolute inset-0 bg-black/50"></div>
+      <div class="relative bg-white w-[92vw] max-w-3xl max-h-[85vh] rounded-xl shadow-xl border border-slate-200 overflow-hidden flex flex-col">
+        <div class="flex items-center justify-between px-4 py-3 border-b border-slate-100">
+          <h3 id="detailsTitle" class="font-semibold text-slate-800 truncate">Details</h3>
+          <button id="detailsClose" class="p-2 rounded-md hover:bg-slate-50">✕</button>
+        </div>
+        <div id="detailsBody" class="flex-1 overflow-auto p-4 space-y-4">
+          <!-- Filled dynamically -->
+        </div>
+      </div>
+    </div>
+
+    <script src="https://unpkg.com/@googlemaps/markerclusterer/dist/index.min.js"></script>
+    <script src="/src/main.js" type="module"></script>
+  </body>
+</html>
